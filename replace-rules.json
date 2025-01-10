@@ -1,0 +1,24 @@
+[
+  {
+    "id": 1736516873388,
+    "name": "(S//REL remove",
+    "rules": [
+      {
+        "pattern": "\\([Ss5$]\\/\\/REL TO.+?\\)\\s?,?|\\([Ss5$]\\/\\/REL\\)\\s?,?|(\\d+.\\s)?\\([Ss5$]\\/\\/REL\\D+\\)\\s?,?",
+        "replacement": "",
+        "flags": ""
+      }
+    ]
+  },
+  {
+    "id": 1736517100945,
+    "name": "Clean Extra Whitespaces",
+    "rules": [
+      {
+        "pattern": "\\s+",
+        "replacement": " ",
+        "flags": ""
+      }
+    ]
+  }
+]
