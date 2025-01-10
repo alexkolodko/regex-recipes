@@ -107,6 +107,7 @@
         .input-area .highlight-match {
             background: var(--highlight-color);
             border-radius: 2px;
+            box-shadow: inset 0 0 0 1px #e8b331;
         }
 
         .result {
@@ -655,6 +656,35 @@
             pointer-events: none;
             display: none;
         }
+
+        .toolbar {
+
+        }
+
+        .search-replace-group {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .toolbar-input {
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 14px;
+            flex: 1;
+        }
+
+        .toolbar-input:focus {
+            border-color: var(--secondary-color);
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(0,102,204,0.2);
+        }
+
+        .toolbar-button {
+            padding: 8px 16px;
+            white-space: nowrap;
+        }
     </style>
 </head>
 <body>
@@ -706,6 +736,26 @@
     </aside>
 
     <main class="main-content">
+        <div class="main-header">
+            <div class="toolbar">
+                <div class="search-replace-group">
+                    <input type="text" id="search-pattern" placeholder="Search pattern" class="toolbar-input">
+                    <input type="text" id="replace-text" placeholder="Replace with" class="toolbar-input">
+                    <button onclick="performReplace()" class="circle-button" title="Replace">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M8 5v14l11-7z" fill="currentColor" stroke="none"/>
+                        </svg>
+                    </button>
+                    <button onclick="saveAsRecipe()" class="circle-button" title="Save as Recipe">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/>
+                            <polyline points="17 21 17 13 7 13 7 21"/>
+                            <polyline points="7 3 7 8 15 8"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
         <div class="main-body">
             <div id="input-text" class="input-area" contenteditable="true" spellcheck="false" placeholder="Enter your text here..."></div>
         </div>
@@ -1356,6 +1406,88 @@
             // Reset form submission handler to default (add mode)
             recipeForm.onsubmit = null;
         }
+
+        // Add live search highlighting
+        document.getElementById('search-pattern').addEventListener('input', function() {
+            highlightMatches(this.value);
+        });
+
+        function highlightMatches(pattern) {
+            if (!pattern) {
+                // If pattern is empty, restore original text
+                const text = inputText.textContent;
+                inputText.textContent = text;
+                return;
+            }
+
+            try {
+                const text = inputText.textContent;
+                const regex = new RegExp(pattern, 'g');
+                let lastIndex = 0;
+                let highlightedText = '';
+                let match;
+
+                while ((match = regex.exec(text)) !== null) {
+                    highlightedText += text.slice(lastIndex, match.index) +
+                        `<span class="highlight-match">${match[0]}</span>`;
+                    lastIndex = regex.lastIndex;
+                }
+                highlightedText += text.slice(lastIndex);
+                
+                inputText.innerHTML = highlightedText;
+            } catch (error) {
+                console.error('Invalid regex:', error);
+            }
+        }
+
+        function performReplace() {
+            const pattern = document.getElementById('search-pattern').value;
+            const replacement = document.getElementById('replace-text').value;
+            
+            if (!pattern) return;
+
+            try {
+                const regex = new RegExp(pattern, 'g');
+                const text = inputText.textContent;
+                inputText.textContent = text.replace(regex, replacement);
+            } catch (error) {
+                alert('Invalid regex pattern: ' + error.message);
+            }
+        }
+
+        function saveAsRecipe() {
+            const pattern = document.getElementById('search-pattern').value;
+            const replacement = document.getElementById('replace-text').value;
+            
+            if (!pattern) {
+                alert('Please enter a search pattern');
+                return;
+            }
+
+            // Show the recipe modal
+            showAddRecipeModal();
+            
+            // Pre-fill the first rule
+            const container = document.getElementById('rules-container');
+            container.innerHTML = createRuleHTML(0, {
+                pattern: pattern,
+                replacement: replacement,
+                flags: 'g'
+            });
+            
+            initDragAndDrop();
+        }
+
+        // Update existing input event handler to also clear search pattern
+        inputText.addEventListener('input', () => {
+            const text = inputText.textContent;
+            inputText.textContent = text;
+            document.querySelectorAll('.recipe-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+            document.getElementById('search-pattern').value = '';
+            document.getElementById('replace-text').value = '';
+        });
     </script>
 </body>
 </html>
