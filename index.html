@@ -92,7 +92,6 @@
             border: 1px solid var(--border-color);
             border-radius: 4px;
             font-family: monospace;
-            margin-bottom: 20px;
             flex: 1;
             overflow-y: auto;
             white-space: pre-wrap;
@@ -626,6 +625,36 @@
             max-height: 90vh;
             overflow-y: auto;
         }
+
+        .rule-item {
+            cursor: move;
+            user-select: none;
+        }
+
+        .recipe-item.dragging {
+            opacity: 0.5;
+            background: #f0f0f0;
+        }
+
+        .rule-header {
+            cursor: move;
+        }
+
+        .rule-actions {
+            cursor: default;
+        }
+
+        /* Add new styles for drop indicator */
+        .drop-indicator {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 760px;
+            height: 2px;
+            background: var(--secondary-color);
+            pointer-events: none;
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -741,6 +770,8 @@
             const container = document.getElementById('rules-container');
             container.innerHTML = '';
             addRule(); // Add first rule by default
+            recipeForm.onsubmit = null;
+            initDragAndDrop();
         }
 
         function hideAddRecipeModal() {
@@ -786,6 +817,13 @@
                                     </svg>
                                 </button>
                                 <div class="recipe-menu-dropdown" id="menu-${recipe.id}">
+                                    <button onclick="event.stopPropagation(); editRecipe(${recipe.id})">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+                                            <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                        </svg>
+                                        Edit
+                                    </button>
                                     <button onclick="event.stopPropagation(); deleteRecipe(${recipe.id})" class="danger">
                                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                             <path d="M3 6h18"/>
@@ -1045,22 +1083,10 @@
 
         function createRuleHTML(index, rule = {}) {
             return `
-                <div class="rule-item" data-index="${index}">
-                    <div class="rule-header">
+                <div class="rule-item" data-index="${index}" draggable="true">
+                    <div class="rule-header" draggable="true">
                         <div class="rule-number">Rule ${index + 1}</div>
                         <div class="rule-actions">
-                            ${index > 0 ? `
-                                <button type="button" onclick="moveRule(${index}, -1)" title="Move up">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path d="M12 19V5M5 12l7-7 7 7"/>
-                                    </svg>
-                                </button>
-                            ` : ''}
-                            <button type="button" onclick="moveRule(${index}, 1)" title="Move down">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M12 5v14M5 12l7 7 7-7"/>
-                                </svg>
-                            </button>
                             <button type="button" onclick="removeRule(${index})" title="Remove rule">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <path d="M18 6L6 18M6 6l12 12"/>
@@ -1097,6 +1123,7 @@
             const index = container.children.length;
             container.insertAdjacentHTML('beforeend', createRuleHTML(index));
             updateRuleNumbers();
+            initDragAndDrop();
         }
 
         function removeRule(index) {
@@ -1168,6 +1195,167 @@
                 dropdowns.forEach(dropdown => dropdown.classList.remove('show'));
             }
         });
+
+        // Add these new functions for drag and drop
+        function initDragAndDrop() {
+            const container = document.getElementById('rules-container');
+            let draggedItem = null;
+            let dropIndicator = document.createElement('div');
+            dropIndicator.className = 'drop-indicator';
+            container.appendChild(dropIndicator);
+
+            container.addEventListener('dragstart', (e) => {
+                draggedItem = e.target.closest('.rule-item');
+                if (!draggedItem) return;
+
+                draggedItem.classList.add('dragging');
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', draggedItem.dataset.index);
+                
+                // Create ghost image for drag
+                const ghost = draggedItem.cloneNode(true);
+                ghost.style.opacity = '0';
+                document.body.appendChild(ghost);
+                e.dataTransfer.setDragImage(ghost, 0, 0);
+                setTimeout(() => ghost.remove(), 0);
+            });
+
+            container.addEventListener('dragend', (e) => {
+                const item = e.target.closest('.rule-item');
+                if (item) {
+                    item.classList.remove('dragging');
+                }
+                dropIndicator.style.display = 'none';
+            });
+
+            container.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                
+                const rule = e.target.closest('.rule-item');
+                if (!rule || rule === draggedItem) {
+                    dropIndicator.style.display = 'none';
+                    return;
+                }
+
+                const rect = rule.getBoundingClientRect();
+                const midpoint = rect.top + rect.height / 2;
+                const position = e.clientY < midpoint ? 'before' : 'after';
+
+                // Update drop indicator position
+                dropIndicator.style.display = 'block';
+                dropIndicator.style.top = position === 'before' ? 
+                    `${rect.top - container.scrollTop}px` : 
+                    `${rect.bottom - container.scrollTop}px`;
+            });
+
+            container.addEventListener('dragleave', (e) => {
+                if (!container.contains(e.relatedTarget)) {
+                    dropIndicator.style.display = 'none';
+                }
+            });
+
+            container.addEventListener('drop', (e) => {
+                e.preventDefault();
+                
+                const rule = e.target.closest('.rule-item');
+                if (!rule || !draggedItem) return;
+
+                dropIndicator.style.display = 'none';
+
+                const rect = rule.getBoundingClientRect();
+                const midpoint = rect.top + rect.height / 2;
+                const position = e.clientY < midpoint ? 'before' : 'after';
+
+                if (draggedItem !== rule) {
+                    if (position === 'before') {
+                        rule.parentNode.insertBefore(draggedItem, rule);
+                    } else {
+                        rule.parentNode.insertBefore(draggedItem, rule.nextSibling);
+                    }
+                }
+
+                updateRuleNumbers();
+                
+                Array.from(container.children).forEach((rule, i) => {
+                    if (rule !== dropIndicator) {
+                        rule.dataset.index = i;
+                        updateRuleButtons(rule, i);
+                    }
+                });
+            });
+        }
+
+        function editRecipe(id) {
+            // Hide any open recipe menus
+            const dropdowns = document.querySelectorAll('.recipe-menu-dropdown');
+            dropdowns.forEach(dropdown => dropdown.classList.remove('show'));
+
+            const recipe = recipes.find(r => r.id === id);
+            if (!recipe) return;
+
+            // Show the modal
+            recipeModal.style.display = 'block';
+            
+            // Set the name
+            document.getElementById('recipe-name').value = recipe.name;
+            
+            // Clear and populate rules
+            const container = document.getElementById('rules-container');
+            container.innerHTML = '';
+            
+            // Handle both old and new format recipes
+            if (recipe.rules && recipe.rules.length > 0) {
+                recipe.rules.forEach((rule, index) => {
+                    container.insertAdjacentHTML('beforeend', createRuleHTML(index, rule));
+                });
+            } else {
+                // Handle old format
+                container.insertAdjacentHTML('beforeend', createRuleHTML(0, {
+                    pattern: recipe.pattern,
+                    replacement: recipe.replacement,
+                    flags: recipe.flags
+                }));
+            }
+            
+            initDragAndDrop();
+            
+            // Update form submission handler
+            recipeForm.onsubmit = function(e) {
+                e.preventDefault();
+                const rules = Array.from(document.querySelectorAll('.rule-item')).map(rule => ({
+                    pattern: rule.querySelector('.pattern-input').value,
+                    replacement: rule.querySelector('.replacement-input').value,
+                    flags: rule.querySelector('.flags-input').value
+                }));
+
+                // Update existing recipe instead of creating new one
+                recipe.name = document.getElementById('recipe-name').value;
+                recipe.rules = rules;
+                delete recipe.pattern;    // Remove old format properties if they exist
+                delete recipe.replacement;
+                delete recipe.flags;
+                
+                saveRecipes();
+                renderRecipes();
+                hideAddRecipeModal();
+                recipeForm.reset();
+                
+                // Reset form submission handler to default (add mode)
+                recipeForm.onsubmit = null;
+            };
+        }
+
+        // Update showAddRecipeModal to reset the form submission handler
+        function showAddRecipeModal() {
+            recipeModal.style.display = 'block';
+            const container = document.getElementById('rules-container');
+            container.innerHTML = '';
+            addRule(); // Add first rule by default
+            
+            // Reset form submission handler to default (add mode)
+            recipeForm.onsubmit = null;
+        }
     </script>
 </body>
 </html>
