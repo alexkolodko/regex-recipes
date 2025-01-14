@@ -625,7 +625,6 @@
         .modal-content {
             max-height: 90vh;
             overflow-y: auto;
-            padding-top: 30px;
         }
 
         .rule-item {
@@ -700,10 +699,12 @@
 
         .flags-group {
             display: flex;
-            gap: 8px;
+            gap: 12px;
             margin-top: 4px;
             flex-wrap: nowrap;
             font-size: 0.8em;
+            justify-content: space-between;
+            width: 100%;
         }
 
         .flag-checkbox {
@@ -714,14 +715,15 @@
             cursor: pointer;
             white-space: nowrap;
             margin-top: -4px;
+            flex: 1;
         }
 
         .flag-checkbox .tooltip {
             visibility: hidden;
             position: absolute;
             bottom: 100%;
-            left: 50%;
-            transform: translateX(-50%);
+            left: 0;
+            transform: none;
             background-color: #333;
             color: white;
             padding: 6px 10px;
@@ -739,8 +741,8 @@
             content: '';
             position: absolute;
             top: 100%;
-            left: 50%;
-            transform: translateX(-50%);
+            left: 15px;
+            transform: none;
             border-width: 4px;
             border-style: solid;
             border-color: #333 transparent transparent transparent;
@@ -759,6 +761,8 @@
 
         .flag-checkbox span {
             color: #666;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .flag-name {
@@ -767,6 +771,7 @@
 
         .flag-letter {
             font-weight: 500;
+            margin-right: 1px;
         }
     </style>
 </head>
@@ -1243,7 +1248,7 @@
                         <div class="form-group">
                             <input type="text" placeholder="Find pattern" class="pattern-input" required value="${rule.pattern || ''}">
                         </div>
-                        <div style="text-align: center; padding-top: 5px;">→</div>
+                        <div style="text-align: center; padding-top: 24px;">→</div>
                         <div class="form-group">
                             <input type="text" placeholder="Replace with (leave empty to delete)" class="replacement-input" value="${rule.replacement || ''}">
                         </div>
