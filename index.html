@@ -625,6 +625,7 @@
         .modal-content {
             max-height: 90vh;
             overflow-y: auto;
+            padding-top: 30px;
         }
 
         .rule-item {
@@ -684,6 +685,88 @@
         .toolbar-button {
             padding: 8px 16px;
             white-space: nowrap;
+        }
+
+        .flags-help {
+            font-size: 0.8em;
+            color: #666;
+            margin-top: 4px;
+            font-style: italic;
+        }
+
+        .flags-input {
+            cursor: help;
+        }
+
+        .flags-group {
+            display: flex;
+            gap: 8px;
+            margin-top: 4px;
+            flex-wrap: nowrap;
+            font-size: 0.8em;
+        }
+
+        .flag-checkbox {
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+            white-space: nowrap;
+            margin-top: -4px;
+        }
+
+        .flag-checkbox .tooltip {
+            visibility: hidden;
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #333;
+            color: white;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            white-space: nowrap;
+            z-index: 100;
+            margin-bottom: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .flag-checkbox .tooltip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border-width: 4px;
+            border-style: solid;
+            border-color: #333 transparent transparent transparent;
+        }
+
+        .flag-checkbox:hover .tooltip {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        .flag-checkbox input[type="checkbox"] {
+            cursor: pointer;
+            width: 14px;
+            height: 14px;
+        }
+
+        .flag-checkbox span {
+            color: #666;
+        }
+
+        .flag-name {
+            color: #666;
+        }
+
+        .flag-letter {
+            font-weight: 500;
         }
     </style>
 </head>
@@ -1137,6 +1220,13 @@
         }
 
         function createRuleHTML(index, rule = {}) {
+            // Parse existing flags into individual flags
+            const flags = rule.flags || 'gi';
+            const hasG = flags.includes('g');
+            const hasI = flags.includes('i');
+            const hasM = flags.includes('m');
+            const hasS = flags.includes('s');
+
             return `
                 <div class="rule-item" data-index="${index}" draggable="true">
                     <div class="rule-header" draggable="true">
@@ -1153,12 +1243,34 @@
                         <div class="form-group">
                             <input type="text" placeholder="Find pattern" class="pattern-input" required value="${rule.pattern || ''}">
                         </div>
-                        <div style="text-align: center; padding-top: 24px;">→</div>
+                        <div style="text-align: center; padding-top: 5px;">→</div>
                         <div class="form-group">
                             <input type="text" placeholder="Replace with (leave empty to delete)" class="replacement-input" value="${rule.replacement || ''}">
                         </div>
                         <div class="form-group">
-                            <input type="text" placeholder="Flags (g, i, m)" class="flags-input" value="${rule.flags || ''}">
+                            <input type="hidden" class="flags-input" value="${flags}">
+                            <div class="flags-group">
+                                <label class="flag-checkbox">
+                                    <span class="tooltip">Match all occurrences in the text (without this, only first match is replaced)</span>
+                                    <input type="checkbox" class="flag-g" ${hasG ? 'checked' : ''} onchange="updateFlags(this)">
+                                    <span><span class="flag-letter">g</span>lobal</span>
+                                </label>
+                                <label class="flag-checkbox">
+                                    <span class="tooltip">Case insensitive - match both upper and lowercase letters</span>
+                                    <input type="checkbox" class="flag-i" ${hasI ? 'checked' : ''} onchange="updateFlags(this)">
+                                    <span>case <span class="flag-letter">i</span>nsensitive</span>
+                                </label>
+                                <label class="flag-checkbox">
+                                    <span class="tooltip">Multiline - make ^ and $ match start/end of each line</span>
+                                    <input type="checkbox" class="flag-m" ${hasM ? 'checked' : ''} onchange="updateFlags(this)">
+                                    <span><span class="flag-letter">m</span>ultiline</span>
+                                </label>
+                                <label class="flag-checkbox">
+                                    <span class="tooltip">Dot matches all - make dot (.) match newlines too</span>
+                                    <input type="checkbox" class="flag-s" ${hasS ? 'checked' : ''} onchange="updateFlags(this)">
+                                    <span><span class="flag-letter">s</span>ingle-line</span>
+                                </label>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1418,7 +1530,7 @@
 
             try {
                 const text = inputText.textContent;
-                const regex = new RegExp(pattern, 'g');
+                const regex = new RegExp(pattern, 'gi');
                 let lastIndex = 0;
                 let highlightedText = '';
                 let match;
@@ -1443,7 +1555,7 @@
             if (!pattern) return;
 
             try {
-                const regex = new RegExp(pattern, 'g');
+                const regex = new RegExp(pattern, 'gi');
                 const text = inputText.textContent;
                 inputText.textContent = text.replace(regex, replacement);
             } catch (error) {
@@ -1484,6 +1596,22 @@
             document.getElementById('search-pattern').value = '';
             document.getElementById('replace-text').value = '';
         });
+
+        // Add this new function to handle flag updates
+        function updateFlags(checkbox) {
+            const ruleItem = checkbox.closest('.rule-item');
+            const flagsInput = ruleItem.querySelector('.flags-input');
+            const checkboxes = ruleItem.querySelectorAll('input[type="checkbox"]');
+            
+            let flags = '';
+            checkboxes.forEach(cb => {
+                if (cb.checked) {
+                    flags += cb.className.replace('flag-', '');
+                }
+            });
+            
+            flagsInput.value = flags || 'gi'; // Default to 'gi' if no flags selected
+        }
     </script>
 </body>
 </html>
