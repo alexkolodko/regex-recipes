@@ -1379,32 +1379,53 @@
                     flags: rule.querySelector('.flags-input').value
                 }));
 
-                // Update existing recipe instead of creating new one
-                recipe.name = document.getElementById('recipe-name').value;
-                recipe.rules = rules;
-                delete recipe.pattern;    // Remove old format properties if they exist
-                delete recipe.replacement;
-                delete recipe.flags;
-                
-                saveRecipes();
-                renderRecipes();
-                hideAddRecipeModal();
-                recipeForm.reset();
+                // Update the existing recipe directly
+                const recipeIndex = recipes.findIndex(r => r.id === id);
+                if (recipeIndex !== -1) {
+                    recipes[recipeIndex] = {
+                        id: id, // Keep the same ID
+                        name: document.getElementById('recipe-name').value,
+                        rules: rules
+                    };
+                    saveRecipes();
+                    renderRecipes();
+                    hideAddRecipeModal();
+                    recipeForm.reset();
+                }
                 
                 // Reset form submission handler to default (add mode)
                 recipeForm.onsubmit = null;
             };
         }
 
-        // Update showAddRecipeModal to reset the form submission handler
+        // Update showAddRecipeModal to create new recipes with unique IDs
         function showAddRecipeModal() {
             recipeModal.style.display = 'block';
             const container = document.getElementById('rules-container');
             container.innerHTML = '';
             addRule(); // Add first rule by default
             
-            // Reset form submission handler to default (add mode)
-            recipeForm.onsubmit = null;
+            // Set up form submission handler for new recipes
+            recipeForm.onsubmit = function(e) {
+                e.preventDefault();
+                const rules = Array.from(document.querySelectorAll('.rule-item')).map(rule => ({
+                    pattern: rule.querySelector('.pattern-input').value,
+                    replacement: rule.querySelector('.replacement-input').value,
+                    flags: rule.querySelector('.flags-input').value
+                }));
+
+                const recipe = {
+                    id: Date.now(), // Generate new ID for new recipes
+                    name: document.getElementById('recipe-name').value,
+                    rules: rules
+                };
+
+                recipes.push(recipe);
+                saveRecipes();
+                renderRecipes();
+                hideAddRecipeModal();
+                recipeForm.reset();
+            };
         }
 
         // Add live search highlighting
