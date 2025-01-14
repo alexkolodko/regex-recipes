@@ -795,23 +795,8 @@
         // Event Listeners
         recipeForm.addEventListener('submit', function(e) {
             e.preventDefault();
-            const rules = Array.from(document.querySelectorAll('.rule-item')).map(rule => ({
-                pattern: rule.querySelector('.pattern-input').value,
-                replacement: rule.querySelector('.replacement-input').value,
-                flags: rule.querySelector('.flags-input').value
-            }));
-
-            const recipe = {
-                id: Date.now(),
-                name: document.getElementById('recipe-name').value,
-                rules: rules
-            };
-
-            recipes.push(recipe);
-            saveRecipes();
-            renderRecipes();
-            hideAddRecipeModal();
-            recipeForm.reset();
+            // This default handler should be empty as we'll set specific handlers
+            // in showAddRecipeModal and editRecipe
         });
 
         // Functions
@@ -820,8 +805,28 @@
             const container = document.getElementById('rules-container');
             container.innerHTML = '';
             addRule(); // Add first rule by default
-            recipeForm.onsubmit = null;
-            initDragAndDrop();
+            
+            // Set up form submission handler for new recipes
+            recipeForm.onsubmit = function(e) {
+                e.preventDefault();
+                const rules = Array.from(document.querySelectorAll('.rule-item')).map(rule => ({
+                    pattern: rule.querySelector('.pattern-input').value,
+                    replacement: rule.querySelector('.replacement-input').value,
+                    flags: rule.querySelector('.flags-input').value
+                }));
+
+                const recipe = {
+                    id: Date.now(), // Generate new ID for new recipes
+                    name: document.getElementById('recipe-name').value,
+                    rules: rules
+                };
+
+                recipes.push(recipe);
+                saveRecipes();
+                renderRecipes();
+                hideAddRecipeModal();
+                recipeForm.reset();
+            };
         }
 
         function hideAddRecipeModal() {
@@ -1395,36 +1400,6 @@
                 
                 // Reset form submission handler to default (add mode)
                 recipeForm.onsubmit = null;
-            };
-        }
-
-        // Update showAddRecipeModal to create new recipes with unique IDs
-        function showAddRecipeModal() {
-            recipeModal.style.display = 'block';
-            const container = document.getElementById('rules-container');
-            container.innerHTML = '';
-            addRule(); // Add first rule by default
-            
-            // Set up form submission handler for new recipes
-            recipeForm.onsubmit = function(e) {
-                e.preventDefault();
-                const rules = Array.from(document.querySelectorAll('.rule-item')).map(rule => ({
-                    pattern: rule.querySelector('.pattern-input').value,
-                    replacement: rule.querySelector('.replacement-input').value,
-                    flags: rule.querySelector('.flags-input').value
-                }));
-
-                const recipe = {
-                    id: Date.now(), // Generate new ID for new recipes
-                    name: document.getElementById('recipe-name').value,
-                    rules: rules
-                };
-
-                recipes.push(recipe);
-                saveRecipes();
-                renderRecipes();
-                hideAddRecipeModal();
-                recipeForm.reset();
             };
         }
 
