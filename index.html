@@ -828,6 +828,7 @@
             <div class="toolbar">
                 <div class="search-replace-group">
                     <input type="text" id="search-pattern" placeholder="Search pattern" class="toolbar-input">
+                    <input type="text" id="global-flags" placeholder="Flags" class="toolbar-input" value="gim" style="width: 80px; flex: 0 0 80px;">
                     <input type="text" id="replace-text" placeholder="Replace with" class="toolbar-input">
                     <button onclick="performReplace()" class="circle-button" title="Replace">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1525,6 +1526,26 @@
             highlightMatches(this.value);
         });
 
+        function escapeRegExp(pattern) {
+            // Remove regex delimiters if present
+            pattern = pattern.replace(/^\/|\/[gimsy]*$/g, '');
+            return pattern;
+        }
+
+        function createSafeRegex(pattern, flags) {
+            try {
+                return new RegExp(pattern, flags);
+            } catch (error) {
+                // If error is due to a trailing backslash, remove it and try again
+                if (error.message.includes('at end of pattern') && pattern.endsWith("\\")) {
+                    const newPattern = pattern.slice(0, -1);
+                    return new RegExp(newPattern, flags);
+                } else {
+                    throw error;
+                }
+            }
+        }
+
         function highlightMatches(pattern) {
             if (!pattern) {
                 // If pattern is empty, restore original text
@@ -1535,32 +1556,54 @@
 
             try {
                 const text = inputText.textContent;
-                const regex = new RegExp(pattern, 'gi');
+                const flags = document.getElementById('global-flags').value || 'gi';
+                
+                // Safely create RegExp
+                const safePattern = escapeRegExp(pattern);
+                if (!safePattern) return;
+                
+                const regex = createSafeRegex(safePattern, flags);
                 let lastIndex = 0;
                 let highlightedText = '';
                 let match;
 
+                regex.lastIndex = 0; // Reset lastIndex
                 while ((match = regex.exec(text)) !== null) {
+                    // Prevent infinite loops
+                    if (match.index === regex.lastIndex) {
+                        regex.lastIndex++;
+                        continue;
+                    }
+                    
                     highlightedText += text.slice(lastIndex, match.index) +
                         `<span class="highlight-match">${match[0]}</span>`;
                     lastIndex = regex.lastIndex;
+                    // If global flag is not set, break after first match
+                    if (!flags.includes('g')) break;
                 }
                 highlightedText += text.slice(lastIndex);
                 
                 inputText.innerHTML = highlightedText;
             } catch (error) {
                 console.error('Invalid regex:', error);
+                // Just show the text without highlights on error
+                inputText.textContent = inputText.textContent;
             }
         }
 
         function performReplace() {
             const pattern = document.getElementById('search-pattern').value;
             const replacement = document.getElementById('replace-text').value;
+            const flags = document.getElementById('global-flags').value || 'gi';
             
             if (!pattern) return;
 
             try {
-                const regex = new RegExp(pattern, 'gi');
+                // Safely create RegExp
+                const safePattern = escapeRegExp(pattern);
+                if (!safePattern) return;
+                
+                const regex = createSafeRegex(safePattern, flags);
                 const text = inputText.textContent;
                 inputText.textContent = text.replace(regex, replacement);
             } catch (error) {
@@ -1571,6 +1614,7 @@
         function saveAsRecipe() {
             const pattern = document.getElementById('search-pattern').value;
             const replacement = document.getElementById('replace-text').value;
+            const flags = document.getElementById('global-flags').value || 'gi';
             
             if (!pattern) {
                 alert('Please enter a search pattern');
@@ -1585,7 +1629,7 @@
             container.innerHTML = createRuleHTML(0, {
                 pattern: pattern,
                 replacement: replacement,
-                flags: 'g'
+                flags: flags
             });
             
             initDragAndDrop();
